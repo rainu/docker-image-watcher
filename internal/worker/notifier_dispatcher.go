@@ -9,7 +9,7 @@ import (
 
 type notifyWorker struct {
 	db           database.Repository
-	jobChan      chan database.OverdueListener
+	jobChan      chan NotificationJob
 	closeChannel chan interface{}
 	interval     time.Duration
 }
@@ -17,7 +17,7 @@ type notifyWorker struct {
 func NewNotifyWorker(
 	dbRepo database.Repository,
 	interval time.Duration,
-	jobs chan database.OverdueListener,
+	jobs chan NotificationJob,
 	closeChannel chan interface{}) Worker {
 
 	return &notifyWorker{
@@ -49,7 +49,6 @@ func (n *notifyWorker) Do() {
 			case <-time.After(n.interval):
 			case <-n.closeChannel:
 				return
-			default:
 			}
 		}
 
@@ -63,8 +62,10 @@ func (n *notifyWorker) Do() {
 	}
 }
 
-func (n *notifyWorker) processRows(rows *sql.Rows, jobs chan database.OverdueListener) {
+func (n *notifyWorker) processRows(rows *sql.Rows, jobs chan NotificationJob) {
 	defer rows.Close()
+
+	feedbackChannels := make([]chan interface{}, 0)
 
 	for rows.Next() {
 		select {
@@ -79,6 +80,19 @@ func (n *notifyWorker) processRows(rows *sql.Rows, jobs chan database.OverdueLis
 			break
 		}
 
-		jobs <- listener
+		feedbackChannels = append(feedbackChannels, make(chan interface{}))
+		jobs <- NotificationJob{
+			Listener:     listener,
+			FeedbackChan: feedbackChannels[len(feedbackChannels)-1],
+		}
+	}
+
+	//wait for feedbacks
+	for _, feedbackChan := range feedbackChannels {
+		select {
+		case <-feedbackChan:
+		case <-n.closeChannel:
+			return
+		}
 	}
 }

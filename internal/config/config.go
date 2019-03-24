@@ -11,11 +11,12 @@ type Config struct {
 
 	BindPort int `arg:"--bind-port,env:BIND_PORT,help:The HTTP server bind port."`
 
-	ObservationInterval  time.Duration `arg:"--observation-interval,env:OBSERVATION_INTERVAL,help:The interval for checking the observations."`
-	ObservationLimit     int           `arg:"--observation-limit,env:OBSERVATION_LIMIT,help:How many observations should be check simultaneously."`
-	NotificationInterval time.Duration `arg:"--notification-interval,env:NOTIFICATION_INTERVAL,help:The interval for notify the overdue listeners."`
-	NotificationLimit    int           `arg:"--notification-limit,env:NOTIFICATION_LIMIT,help:How many listeners should be notify simultaneously."`
-	NotificationTimeout  time.Duration `arg:"--notification-timeout,env:NOTIFICATION_TIMEOUT,help:The connection timeout for each listener."`
+	ObservationInterval          time.Duration `arg:"--observation-interval,env:OBSERVATION_INTERVAL,help:The interval for checking the observations (registry lookup)."`
+	ObservationDispatchInterval  time.Duration `arg:"--observation-interval,env:OBSERVATION_DISPATCH_INTERVAL,help:The interval for looking processable observations."`
+	ObservationLimit             int           `arg:"--observation-limit,env:OBSERVATION_LIMIT,help:How many observations should be check simultaneously."`
+	NotificationDispatchInterval time.Duration `arg:"--notification-dispatch-interval,env:NOTIFICATION_DISPATCH_INTERVAL,help:The interval looking for overdue listeners."`
+	NotificationLimit            int           `arg:"--notification-limit,env:NOTIFICATION_LIMIT,help:How many listeners should be notify simultaneously."`
+	NotificationTimeout          time.Duration `arg:"--notification-timeout,env:NOTIFICATION_TIMEOUT,help:The connection timeout for each listener."`
 }
 
 type databaseConfig struct {
@@ -39,11 +40,12 @@ func NewConfig() *Config {
 			DatabasePassword: "postgres",
 		},
 
-		ObservationInterval:  1 * time.Minute,
-		ObservationLimit:     10,
-		NotificationInterval: 1 * time.Minute,
-		NotificationLimit:    60,
-		NotificationTimeout:  10 * time.Second,
+		ObservationDispatchInterval:  30 * time.Second,
+		ObservationInterval:          1 * time.Minute,
+		ObservationLimit:             10,
+		NotificationDispatchInterval: 1 * time.Minute,
+		NotificationLimit:            60,
+		NotificationTimeout:          10 * time.Second,
 	}
 
 	arg.Parse(cfg)

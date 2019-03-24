@@ -6,7 +6,6 @@ import (
 	"github.com/rainu/docker-image-watcher/internal/client"
 	"github.com/rainu/docker-image-watcher/internal/config"
 	"github.com/rainu/docker-image-watcher/internal/database"
-	"github.com/rainu/docker-image-watcher/internal/database/model"
 	"github.com/rainu/docker-image-watcher/internal/server"
 	"github.com/rainu/docker-image-watcher/internal/worker"
 	"net/http"
@@ -73,16 +72,16 @@ func startWorker(
 	httpClient *http.Client,
 	closeChan chan interface{}) {
 
-	notifierJobs := make(chan database.OverdueListener, cfg.NotificationLimit)
-	notifierUpdateJobs := make(chan worker.NotificationUpdate)
-	go worker.NewNotifier(notifierJobs, notifierUpdateJobs, httpClient).Do()
-	go worker.NewNotificationUpdater(notifierUpdateJobs, dbRepo).Do()
+	notificationJobs := make(chan worker.NotificationJob, cfg.NotificationLimit)
+	for i := 0; i < cfg.NotificationLimit; i++ {
+		go worker.NewNotifier(notificationJobs, dbRepo, httpClient).Do()
+	}
 
-	observationJobs := make(chan model.Observation, cfg.ObservationLimit)
-	observationUpdateJobs := make(chan worker.ObservationUpdate)
-	go worker.NewObserver(observationJobs, observationUpdateJobs, clients).Do()
-	go worker.NewObservationUpdater(observationUpdateJobs, dbRepo).Do()
+	observationJobs := make(chan worker.ObservationJob, cfg.ObservationLimit)
+	for i := 0; i < cfg.ObservationLimit; i++ {
+		go worker.NewObserver(observationJobs, dbRepo, clients).Do()
+	}
 
-	go worker.NewObserverWorker(dbRepo, cfg.ObservationInterval, observationJobs, closeChan).Do()
-	go worker.NewNotifyWorker(dbRepo, cfg.NotificationInterval, notifierJobs, closeChan).Do()
+	go worker.NewObserverWorker(dbRepo, cfg.ObservationInterval, cfg.ObservationDispatchInterval, observationJobs, closeChan).Do()
+	go worker.NewNotifyWorker(dbRepo, cfg.NotificationDispatchInterval, notificationJobs, closeChan).Do()
 }

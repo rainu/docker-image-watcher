@@ -2,24 +2,26 @@ package worker
 
 import (
 	"github.com/rainu/docker-image-watcher/internal/client"
+	"github.com/rainu/docker-image-watcher/internal/database"
 	"github.com/rainu/docker-image-watcher/internal/database/model"
 	log "github.com/sirupsen/logrus"
 )
 
+type ObservationJob struct {
+	Observation  model.Observation
+	FeedbackChan chan interface{}
+}
+
 type observer struct {
-	jobs          chan model.Observation
-	updateChan    chan ObservationUpdate
+	db            database.Repository
+	jobs          chan ObservationJob
 	dockerClients map[string]client.DockerRegistryClient
 }
 
-func NewObserver(
-	jobs chan model.Observation,
-	updateChan chan ObservationUpdate,
-	dockerClients map[string]client.DockerRegistryClient) Worker {
-
+func NewObserver(jobs chan ObservationJob, db database.Repository, dockerClients map[string]client.DockerRegistryClient) Worker {
 	return &observer{
 		jobs:          jobs,
-		updateChan:    updateChan,
+		db:            db,
 		dockerClients: dockerClients,
 	}
 }
@@ -29,13 +31,14 @@ func (o *observer) Do() {
 	defer log.Info("Stop observer...")
 
 	for {
-		observation, ok := <-o.jobs
+		job, ok := <-o.jobs
 		if !ok {
 			return
 		}
 
-		log.Infof("Observe %s/%s:%s", observation.Registry, observation.Image, observation.Tag)
-		o.observe(observation)
+		log.Infof("Observe %s/%s:%s", job.Observation.Registry, job.Observation.Image, job.Observation.Tag)
+		o.observe(job.Observation)
+		job.FeedbackChan <- true
 	}
 }
 
@@ -50,18 +53,22 @@ func (o *observer) observe(observation model.Observation) {
 			log.Infof("Got manifest for %s/%s:%s", observation.Registry, observation.Image, observation.Tag)
 		}
 
-		o.updateChan <- ObservationUpdate{
-			Registry: observation.Registry,
-			Image:    observation.Image,
-			Tag:      observation.Tag,
-			Hash:     manifest.Config.Digest,
+		err = o.db.UpdateImageHash(
+			observation.Registry,
+			observation.Image,
+			observation.Tag,
+			manifest.Config.Digest)
+
+		if err != nil {
+			log.Errorf("Unable to update docker image hash for %s/%s:%s. Error: %v",
+				observation.Registry, observation.Image, observation.Tag, err)
 		}
 	} else {
 		log.Warningf("No docker client found for registry: %s", observation.Registry)
 	}
 
-	//if err := o.db.TouchObservation(observation.ID); err != nil {
-	//	log.Errorf("Unable to touch observation for %s/%s:%s. Error: %v",
-	//		observation.Registry, observation.Image, observation.Tag, err)
-	//}
+	if err := o.db.TouchObservation(observation.ID); err != nil {
+		log.Errorf("Unable to touch observation for %s/%s:%s. Error: %v",
+			observation.Registry, observation.Image, observation.Tag, err)
+	}
 }

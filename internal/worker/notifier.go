@@ -10,20 +10,21 @@ import (
 	"net/http"
 )
 
+type NotificationJob struct {
+	Listener     database.OverdueListener
+	FeedbackChan chan interface{}
+}
+
 type notifier struct {
-	jobs       chan database.OverdueListener
-	updateChan chan NotificationUpdate
+	db         database.Repository
+	jobs       chan NotificationJob
 	httpClient *http.Client
 }
 
-func NewNotifier(
-	jobs chan database.OverdueListener,
-	updateChan chan NotificationUpdate,
-	httpClient *http.Client) Worker {
-
+func NewNotifier(jobs chan NotificationJob, db database.Repository, httpClient *http.Client) Worker {
 	return &notifier{
 		jobs:       jobs,
-		updateChan: updateChan,
+		db:         db,
 		httpClient: httpClient,
 	}
 }
@@ -33,13 +34,13 @@ func (n *notifier) Do() {
 	defer log.Info("Stop notifier...")
 
 	for {
-		listener, ok := <-n.jobs
+		job, ok := <-n.jobs
 		if !ok {
 			return
 		}
 
-		log.Infof("Notify listener %s", listener.Name)
-		n.notify(listener)
+		n.notify(job.Listener)
+		job.FeedbackChan <- true
 	}
 }
 
@@ -78,9 +79,8 @@ func (n *notifier) notify(listener database.OverdueListener) {
 		defer response.Body.Close()
 	}
 
-	n.updateChan <- NotificationUpdate{
-		ListenerId:   listener.ID,
-		ListenerName: listener.Name,
-		Hash:         listener.ObservationHash,
+	if err := n.db.UpdateListener(listener.ID, listener.ObservationHash); err != nil {
+		log.Errorf("Unable to save notification state for listener %s. Error: %n",
+			listener.Name, err)
 	}
 }

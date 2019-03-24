@@ -3,30 +3,32 @@ package worker
 import (
 	"database/sql"
 	"github.com/rainu/docker-image-watcher/internal/database"
-	"github.com/rainu/docker-image-watcher/internal/database/model"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
 
 type observerWorker struct {
-	db              database.Repository
-	jobChan         chan model.Observation
-	closeChannel    chan interface{}
-	interval        time.Duration
-	maxObservations int
+	db               database.Repository
+	jobChan          chan ObservationJob
+	closeChannel     chan interface{}
+	lookupInterval   time.Duration
+	dispatchInterval time.Duration
+	maxObservations  int
 }
 
 func NewObserverWorker(
 	dbRepo database.Repository,
-	interval time.Duration,
-	jobChan chan model.Observation,
+	lookupInterval time.Duration,
+	dispatchInterval time.Duration,
+	jobChan chan ObservationJob,
 	closeChannel chan interface{}) Worker {
 
 	return &observerWorker{
-		db:           dbRepo,
-		jobChan:      jobChan,
-		closeChannel: closeChannel,
-		interval:     interval,
+		db:               dbRepo,
+		jobChan:          jobChan,
+		closeChannel:     closeChannel,
+		lookupInterval:   lookupInterval,
+		dispatchInterval: dispatchInterval,
 	}
 }
 
@@ -35,25 +37,26 @@ func (o *observerWorker) Do() {
 	defer log.Info("Stop observation dispatcher...")
 	defer close(o.jobChan)
 
-	//first := true
+	first := true
 
 	for {
-		select {
-		case <-o.closeChannel:
-			return
-		default:
+		if first {
+			first = false
+
+			select {
+			case <-o.closeChannel:
+				return
+			default:
+			}
+		} else {
+			select {
+			case <-time.After(o.dispatchInterval):
+			case <-o.closeChannel:
+				return
+			}
 		}
 
-		//else {
-		//	select {
-		//	case <-time.After(o.interval):
-		//	case <-o.closeChannel:
-		//		return
-		//	default:
-		//	}
-		//}
-
-		rows, err := o.db.GetObservations(o.interval)
+		rows, err := o.db.GetObservations(o.lookupInterval)
 		if err != nil {
 			log.Errorf("Could not get listeners. Error: %v", err)
 			continue
@@ -63,8 +66,10 @@ func (o *observerWorker) Do() {
 	}
 }
 
-func (o *observerWorker) processRows(rows *sql.Rows, jobs chan model.Observation) {
+func (o *observerWorker) processRows(rows *sql.Rows, jobs chan ObservationJob) {
 	defer rows.Close()
+
+	feedbackChannels := make([]chan interface{}, 0)
 
 	for rows.Next() {
 		select {
@@ -79,6 +84,19 @@ func (o *observerWorker) processRows(rows *sql.Rows, jobs chan model.Observation
 			break
 		}
 
-		jobs <- observation
+		feedbackChannels = append(feedbackChannels, make(chan interface{}))
+		jobs <- ObservationJob{
+			Observation:  observation,
+			FeedbackChan: feedbackChannels[len(feedbackChannels)-1],
+		}
+	}
+
+	//wait for feedbacks
+	for _, feedbackChan := range feedbackChannels {
+		select {
+		case <-feedbackChan:
+		case <-o.closeChannel:
+			return
+		}
 	}
 }

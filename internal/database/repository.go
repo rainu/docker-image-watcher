@@ -88,7 +88,7 @@ func (r *repository) AddObservation(observation model.Observation) error {
 func (r *repository) GetObservations(since time.Duration) (*sql.Rows, error) {
 	return r.db.
 		Model(&model.Observation{}).
-		Where(fmt.Sprintf("created_at = updated_at OR updated_at < NOW() + interval '%f second'", since.Seconds())).
+		Where(fmt.Sprintf("created_at = updated_at OR updated_at < NOW() - interval '%f second'", since.Seconds())).
 		Order("updated_at ASC").
 		Rows()
 }
