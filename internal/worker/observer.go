@@ -48,7 +48,7 @@ func (o *observer) observe(observation model.Observation) {
 		manifest, err := dockerClient.GetManifest(observation.Image, observation.Tag)
 
 		if err != nil {
-			log.Errorf("Error while getting Manifest for %s:%s. Error: %v", observation.Image, observation.Tag, err)
+			log.WithError(err).Errorf("Error while getting Manifest for %s:%s.", observation.Image, observation.Tag)
 		} else {
 			log.Infof("Got manifest for %s/%s:%s", observation.Registry, observation.Image, observation.Tag)
 		}
@@ -60,15 +60,15 @@ func (o *observer) observe(observation model.Observation) {
 			manifest.Config.Digest)
 
 		if err != nil {
-			log.Errorf("Unable to update docker image hash for %s/%s:%s. Error: %v",
-				observation.Registry, observation.Image, observation.Tag, err)
+			log.WithError(err).Errorf("Unable to update docker image hash for %s/%s:%s.",
+				observation.Registry, observation.Image, observation.Tag)
 		}
 	} else {
 		log.Warningf("No docker client found for registry: %s", observation.Registry)
 	}
 
 	if err := o.db.TouchObservation(observation.ID); err != nil {
-		log.Errorf("Unable to touch observation for %s/%s:%s. Error: %v",
-			observation.Registry, observation.Image, observation.Tag, err)
+		log.WithError(err).Errorf("Unable to touch observation for %s/%s:%s.",
+			observation.Registry, observation.Image, observation.Tag)
 	}
 }

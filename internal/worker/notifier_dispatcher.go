@@ -54,7 +54,7 @@ func (n *notifyWorker) Do() {
 
 		rows, err := n.db.GetOverdueNotifications()
 		if err != nil {
-			log.Errorf("Could not get listeners. Error: %v", err)
+			log.WithError(err).Error("Could not get listeners.")
 			continue
 		}
 
@@ -76,7 +76,7 @@ func (n *notifyWorker) processRows(rows *sql.Rows, jobs chan NotificationJob) {
 
 		listener, err := n.db.NextNotification(rows)
 		if err != nil {
-			log.Errorf("Could not get listeners. Error: %v", err)
+			log.WithError(err).Error("Could not get listeners.")
 			break
 		}
 

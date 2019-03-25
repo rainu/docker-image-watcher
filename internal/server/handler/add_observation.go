@@ -66,7 +66,7 @@ func (r *registryHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	if parsedBody.Trigger.Header != nil {
 		rawHeader, err := json.Marshal(parsedBody.Trigger.Header)
 		if err != nil {
-			log.Errorf("Error while marshall trigger-header: %v", err)
+			log.WithError(err).Error("Error while marshall trigger-header")
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -74,13 +74,13 @@ func (r *registryHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	}
 
 	if _, err := base64.StdEncoding.Decode(observation.Listener[0].Body, []byte(parsedBody.Trigger.Body)); err != nil {
-		log.Errorf("Error while decode base64 trigger-body: %v", err)
+		log.WithError(err).Error("Error while decode base64 trigger-body")
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if err := r.Repository.AddObservation(observation); err != nil {
-		log.Errorf("Error while persisting observation: %v", err)
+		log.WithError(err).Error("Error while persisting observation")
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}

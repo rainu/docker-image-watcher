@@ -58,7 +58,7 @@ func (o *observerWorker) Do() {
 
 		rows, err := o.db.GetObservations(o.lookupInterval)
 		if err != nil {
-			log.Errorf("Could not get listeners. Error: %v", err)
+			log.WithError(err).Error("Could not get listeners.")
 			continue
 		}
 
@@ -80,7 +80,7 @@ func (o *observerWorker) processRows(rows *sql.Rows, jobs chan ObservationJob) {
 
 		observation, err := o.db.NextObservation(rows)
 		if err != nil {
-			log.Errorf("Could not get observations. Error: %v", err)
+			log.WithError(err).Error("Could not get observations.")
 			break
 		}
 
