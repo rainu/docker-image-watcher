@@ -1,12 +1,19 @@
 # docker image watcher
 
-tbd
+Docker-Image-Watcher is a server component which can observe docker images and notify some listeners. So you can
+use it to trigger re-build you docker images if a base docker images was updated.
 
 ## Installation
 
 Docker:
 
 ```sh
+docker run --rm --name postgres \
+           -p 5432:5432 \
+           -e POSTGRES_PASSWORD=postgres \
+           -e POSTGRES_USER=postgres \
+           -e POSTGRES_DB=postgres \
+           postgres
 docker run -p 8080:8080 rainu/docker-image-watcher
 ```
 
@@ -16,14 +23,25 @@ docker run -p 8080:8080 rainu/docker-image-watcher
 
 ### Configuration
 
-| ENV-Variable        | CLI-Option-Name      | Default-Value | required | Description  |
-| ------------------- |----------------------|:-------------:|:--------:| -------------|
-| BIND_PORT           | --bind-port          | 8080          | false    | The port where the service listen on |
+| ENV-Variable                   | CLI-Option-Name                  | Default-Value | required | Description  |
+| ------------------------------ |----------------------------------|:-------------:|:--------:| -------------|
+| BIND_PORT                      | --bind-port                      | 8080          | false    | The port where the service listen on |
+| OBSERVATION_INTERVAL           | --observation-interval           | 1m            | false    | The interval for checking the observations (registry lookup) |
+| OBSERVATION_DISPATCH_INTERVAL  | --observation-dispatch-interval  | 30s           | false    | The interval for looking processable observations |
+| OBSERVATION_LIMIT              | --observation-limit              | 10            | false    | How many observations should be check simultaneously |
+| NOTIFICATION_DISPATCH_INTERVAL | --notification-dispatch-interval | 1m            | false    | The interval looking for overdue listeners |
+| NOTIFICATION_LIMIT             | --notification-limit             | 60            | false    | How many listeners should be notify simultaneously |
+| NOTIFICATION_TIMEOUT           | --notification-timeout           | 10s           | false    | The connection timeout for each listener |
+| DATABASE_SSL                   | --database-ssl                   | disable       | false    | The database ssl mode: enable/disable |
+| DATABASE_HOST                  | --database-host                  | localhost     | false    | The database host |
+| DATABASE_PORT                  | --database-port                  | 5432          | false    | The database port |
+| DATABASE_SCHEMA                | --database-schema                | postgres      | false    | The database schema |
+| DATABASE_USER                  | --database-user                  | postgres      | false    | The database user |
+| DATABASE_PASSWORD              | --database-password              | postgres      | false    | The database password |
 
 ### API
 
-| Method  | Path      | Variables     | Body |  Description  |
-| ------- | --------- | ------------- | ---- | ------------- |
+See the [API-Documentation](./api_doc.yml)
 
 ## Development setup
 

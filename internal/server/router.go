@@ -13,7 +13,7 @@ func NewRouter(repo database.Repository) http.Handler {
 	router := mux.NewRouter()
 
 	// RESTful API
-	router.Handle("/api/v1/register", handler.NewAddObservationHandler(repo)).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/registry", handler.NewAddObservationHandler(repo).AddObservation).Methods(http.MethodPost)
 
 	return handlers.LoggingHandler(os.Stdout, router)
 }

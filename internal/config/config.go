@@ -12,7 +12,7 @@ type Config struct {
 	BindPort int `arg:"--bind-port,env:BIND_PORT,help:The HTTP server bind port."`
 
 	ObservationInterval          time.Duration `arg:"--observation-interval,env:OBSERVATION_INTERVAL,help:The interval for checking the observations (registry lookup)."`
-	ObservationDispatchInterval  time.Duration `arg:"--observation-interval,env:OBSERVATION_DISPATCH_INTERVAL,help:The interval for looking processable observations."`
+	ObservationDispatchInterval  time.Duration `arg:"--observation-dispatch-interval,env:OBSERVATION_DISPATCH_INTERVAL,help:The interval for looking processable observations."`
 	ObservationLimit             int           `arg:"--observation-limit,env:OBSERVATION_LIMIT,help:How many observations should be check simultaneously."`
 	NotificationDispatchInterval time.Duration `arg:"--notification-dispatch-interval,env:NOTIFICATION_DISPATCH_INTERVAL,help:The interval looking for overdue listeners."`
 	NotificationLimit            int           `arg:"--notification-limit,env:NOTIFICATION_LIMIT,help:How many listeners should be notify simultaneously."`

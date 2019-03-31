@@ -9,6 +9,10 @@ import (
 	"net/http"
 )
 
+type ObservationHandler interface {
+	AddObservation(writer http.ResponseWriter, request *http.Request)
+}
+
 type registryHandler struct {
 	Repository database.Repository
 }
@@ -29,13 +33,13 @@ type addObservationTrigger struct {
 	Body   string            `json:"body"`
 }
 
-func NewAddObservationHandler(repo database.Repository) http.Handler {
+func NewAddObservationHandler(repo database.Repository) ObservationHandler {
 	return &registryHandler{
 		Repository: repo,
 	}
 }
 
-func (r *registryHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (r *registryHandler) AddObservation(writer http.ResponseWriter, request *http.Request) {
 	parsedBody := &addObservationRequest{
 		Registry: "docker.io",
 		Tag:      "latest",

@@ -1,0 +1,81 @@
+openapi: 3.0.1
+info:
+  title: Docker Image Watcher
+  version: 1.0.0
+servers:
+  - url: //localhost/api/v1
+paths:
+  /registry:
+    post:
+      summary: Observe the given docker image and add a listener
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Observation'
+        required: true
+      responses:
+        201:
+          description: Observation was created
+          content: {}
+        400:
+          description: If the body was invalid
+          content: {}
+        500:
+          description: If the observation could not be stored
+          content: {}
+
+components:
+  schemas:
+    Trigger:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+          example: myTrigger
+          description: A uniq name of this trigger
+        method:
+          type: string
+          example: GET
+          default: GET
+          description: The HTTP-Method of that trigger
+        url:
+          type: string
+          example: http://example.com/docker/watch
+          description: The trigger url
+        header:
+          type: object
+          example:
+            DOCKER_IMAGE: rainu/docker-image-watcher
+            DOCKER_TAG: latest
+          description: HTTP-Header which should be used for triggering
+          properties: {}
+        body:
+          type: string
+          example:
+          description: The HTTP-Body (base64 encoded) which should be sent for triggering
+          format: base64
+    Observation:
+      type: object
+      required:
+        - image
+      properties:
+        registry:
+          type: string
+          example: docker.io
+          default: docker.io
+          description: The docker registry
+        image:
+          type: string
+          example: rainu/docker-image-watcher
+          description: The docker image name
+        tag:
+          type: string
+          default: latest
+          example: latest
+          description: The docker image tag
+        trigger:
+          $ref: '#/components/schemas/Trigger'
